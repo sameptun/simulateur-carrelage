@@ -207,7 +207,6 @@ input[type=range]{width:100%;accent-color:var(--glaze);margin:0}
 <div class="page">
 
   <header>
-    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span id="shop-name">Votre Carrelage</span></div>
     <nav class="tabs" aria-label="Navigation">
       <a class="tab" href="#" data-route="home">Accueil</a>
       <a class="tab" href="#plan-2d" data-route="2d">Plan 2D</a>
@@ -664,7 +663,6 @@ function fillSwatches(){
     return '<button class="swatch" data-wallc="'+k+'" title="Murs '+WALLS[k][0]+'" aria-label="Murs '+WALLS[k][0]+'" aria-pressed="false" type="button" style="background:'+WALLS[k][1]+'"></button>';
   }).join('');
   qa('.js-wallc').forEach(function(n){ n.innerHTML=wc; });
-  $('shop-name').textContent=CONFIG.shop;
   fillSwatches();
 })();
 
