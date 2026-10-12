@@ -75,6 +75,10 @@ nav.tabs{display:flex;gap:6px;flex-wrap:wrap}
 .btn.wa{background:#1FA855;border-color:#1FA855;color:#fff}
 :focus-visible{outline:3px solid var(--sun);outline-offset:3px}
 .swatch{width:36px;height:36px;border-radius:8px;border:2px solid var(--line);cursor:pointer;padding:0;background-size:cover;background-position:center}
+.swatch.colorpick{position:relative;overflow:hidden;background:conic-gradient(#e5484d,#f2b632,#30a46c,#3e63dd,#8e4ec6,#e5484d)}
+.swatch.colorpick input{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);opacity:0;cursor:pointer;padding:0;border:0}
+.zp,.zp-body{display:grid;gap:12px}
+.zp .seg .btn[aria-pressed]{white-space:nowrap}
 .swatch[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
 .upload{position:relative}
 
@@ -336,14 +340,26 @@ input[type=range]{width:100%;accent-color:var(--glaze);margin:0}
           <div class="lab">Outil</div>
           <div class="seg" role="group" aria-label="Outil du plan">
             <button class="btn small" data-tool="tile" aria-pressed="true" type="button">Carrelage</button>
+            <button class="btn small" data-tool="wall" aria-pressed="false" type="button">Murs carrelés</button>
             <button class="btn small" data-tool="door" aria-pressed="false" type="button">Porte</button>
             <button class="btn small" data-tool="win" aria-pressed="false" type="button">Fenêtre</button>
             <button class="btn small" data-tool="san" aria-pressed="false" type="button">Sanitaires</button>
+            <button class="btn small" data-tool="part" aria-pressed="false" type="button">Cloisons</button>
             <button class="btn small" data-tool="clim" aria-pressed="false" type="button">Climatisation</button>
             <button class="btn small" data-tool="corners" aria-pressed="false" type="button">Coins</button>
             <button class="btn small" data-tool="draw" aria-pressed="false" type="button">Dessiner mon plan</button>
           </div>
         </div>
+      </div>
+
+      <div class="panel" id="p-zone" hidden>
+        <h3>Murs carrelés</h3>
+        <div class="js-zonepanel"></div>
+      </div>
+
+      <div class="panel" id="p-part" hidden>
+        <h3>Cloisons</h3>
+        <div class="js-partpanel"></div>
       </div>
 
       <div class="panel" id="p-draw" hidden>
@@ -414,6 +430,7 @@ input[type=range]{width:100%;accent-color:var(--glaze);margin:0}
         <label class="btn small upload">Ajouter une photo de carreau<input type="file" accept="image/*" class="js-file" hidden></label>
         <div class="field"><div class="lab">Format</div><div class="seg js-format"></div></div>
         <div class="field"><div class="lab">Pose</div><div class="seg js-pose"></div></div>
+        <div class="field"><div class="lab">Joints</div><div class="seg js-grout"></div></div>
       </div>
 
       <div class="navbtns">
@@ -435,7 +452,7 @@ input[type=range]{width:100%;accent-color:var(--glaze);margin:0}
         <canvas id="cv" aria-label="Pièce en 3D, faites glisser pour tourner"></canvas>
         <div class="fallback" id="fallback" hidden>La 3D ne peut pas s'afficher sur cet appareil. Le plan 2D reste disponible.</div>
       </div>
-      <p class="hint">Glissez pour tourner, molette ou pincement pour zoomer. Cliquez sur la fenêtre, la porte, la clim ou un sanitaire pour le déplacer le long des murs.</p>
+      <p class="hint">Glissez pour tourner, molette ou pincement pour zoomer. Cliquez sur la fenêtre, la porte, la clim, un sanitaire, une zone de mur ou une cloison pour le déplacer. Pour tracer une cloison, choisissez un modèle dans « Cloisons », puis glissez sur le sol.</p>
     </div>
 
     <div class="side">
@@ -451,7 +468,18 @@ input[type=range]{width:100%;accent-color:var(--glaze);margin:0}
         <label class="btn small upload">Ajouter une photo de carreau<input type="file" accept="image/*" class="js-file" hidden></label>
         <div class="field"><div class="lab">Format</div><div class="seg js-format"></div></div>
         <div class="field"><div class="lab">Pose</div><div class="seg js-pose"></div></div>
+        <div class="field"><div class="lab">Joints</div><div class="seg js-grout"></div></div>
         <div class="field"><div class="lab">Murs</div><div class="seg js-wallc"></div></div>
+      </div>
+
+      <div class="panel">
+        <h3>Murs carrelés</h3>
+        <div class="js-zonepanel"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Cloisons</h3>
+        <div class="js-partpanel"></div>
       </div>
 
       <div class="panel">
@@ -588,6 +616,12 @@ var SYMBOLS={
   douche:'<rect x="-0.45" y="-0.45" width="0.9" height="0.9" fill="var(--surface)"/><circle cx="0" cy="0" r="0.05" fill="var(--glass)"/><line x1="-0.45" y1="0.45" x2="0.45" y2="0.45" stroke="var(--air)" stroke-width="0.05"/><line x1="0.45" y1="-0.45" x2="0.45" y2="0.45" stroke="var(--air)" stroke-width="0.05"/><circle cx="-0.33" cy="-0.33" r="0.06" fill="var(--glass)"/>',
   bain:'<rect x="-0.85" y="-0.375" width="1.7" height="0.75" rx="0.06" fill="var(--surface)"/><rect x="-0.77" y="-0.3" width="1.54" height="0.6" rx="0.24" fill="var(--glass)" stroke-width="0.015"/><circle cx="-0.68" cy="0" r="0.03" fill="var(--ink)"/>'
 };
+var GROUTS=[['Blanc','#F4F4F2'],['Gris clair','#C6CAC8'],['Gris','#9EA3A0'],['Noir','#2A2D2C']];
+function groutName(h){
+  var c=String(h).toLowerCase(), n='personnalisés';
+  GROUTS.forEach(function(g){ if(g[1].toLowerCase()===c) n=g[0].toLowerCase(); });
+  return n;
+}
 var EXPORT_VARS={'--surface':'#FFFFFF','--ink':'#14201E','--muted':'#4F5F5B','--glaze':'#0F4F4A','--sun':'#F2B632','--air':'#4FB4E6','--glass':'#CDE5EE','--line':'#CBD3D0'};
 
 /* =====================================================================
@@ -598,9 +632,12 @@ var project={
   door:{e:0,s:0.3,w:0.9}, win:{e:1,c:2.1,w:1.4}, h:2.5, shape:'carree',
   tile:CATALOG[0].id, tileCm:60, pose:'droite', wallColor:'blanc',
   clim:{e:0,t:0.7,kw:2.5,on:false,enabled:false},
-  items:[]
+  items:[],
+  grout:'#9EA3A0',
+  zones:[],
+  parts:[]
 };
-var ui={tool:'tile',drag:null,draft:null,cursor:null,dragV:-1,ortho:true,vbLock:null,hintMsg:'',place:null,sel:-1,dragItem:-1};
+var ui={tool:'tile',psel:-1,pplace:null,pcreate:null,poff:{x:0,y:0},zsel:-1,zedge:0,zcreate:null,drag:null,draft:null,cursor:null,dragV:-1,ortho:true,vbLock:null,hintMsg:'',place:null,sel:-1,dragItem:-1};
 
 function $(id){ return document.getElementById(id); }
 function qa(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
@@ -666,12 +703,14 @@ function clampAll(){
   if(!E[w.e]) w.e=Math.min(1,E.length-1);
   var lw=E[w.e].len; w.w=Math.min(w.w>0?w.w:1.4,Math.max(0.4,lw-0.2)); w.c=clamp(w.c,w.w/2+0.1,Math.max(w.w/2+0.1,lw-w.w/2-0.1));
   clampItems();
+  clampZones();
+  clampParts();
 }
 function loadPreset(k){
   var p=PRESETS[k];
   project.poly=clone(p.poly); project.door=clone(p.door); project.win=clone(p.win);
   project.clim.e=p.clim.e; project.clim.t=p.clim.t; project.shape=k;
-  project.items=[]; ui.sel=-1;
+  project.items=[]; ui.sel=-1; project.zones=[]; ui.zsel=-1; project.parts=[]; ui.psel=-1;
   ui.draft=null; ui.tool='tile'; clampAll();
 }
 function setRect(w,l){
@@ -709,6 +748,93 @@ function clampItems(){
     it.s=(hi>=lo)?clamp(it.s,lo,hi):e.len/2;
   });
   if(ui.sel>=project.items.length) ui.sel=-1;
+}
+var PART_NAMES={pleine:'Cloison pleine',demi:'Demi-cloison',verre:'Cloison vitrée',passage:'Cloison avec passage'};
+function partDefaults(type){
+  return {type:type,th:type==='verre'?0.02:0.10,h:type==='demi'?1.1:(type==='verre'?2.0:project.h),oc:0.5,ow:0.9};
+}
+function newPart(type,x1,y1,x2,y2){
+  var d=partDefaults(type); d.x1=x1; d.y1=y1; d.x2=x2; d.y2=y2; return d;
+}
+function partLen(pt){ return Math.hypot(pt.x2-pt.x1,pt.y2-pt.y1); }
+function clampParts(){
+  var b=bbox(project.poly);
+  project.parts.forEach(function(pt){
+    pt.x1=clamp(pt.x1,b.x0,b.x1); pt.x2=clamp(pt.x2,b.x0,b.x1);
+    pt.y1=clamp(pt.y1,b.y0,b.y1); pt.y2=clamp(pt.y2,b.y0,b.y1);
+    pt.h=clamp(pt.h,0.3,project.h);
+    pt.oc=clamp(pt.oc,0.1,0.9);
+    pt.ow=clamp(pt.ow,0.6,Math.max(0.6,Math.min(1.5,partLen(pt)-0.2)));
+  });
+  if(ui.psel>=project.parts.length) ui.psel=-1;
+}
+function partText(){
+  var c={};
+  project.parts.forEach(function(p){ c[p.type]=(c[p.type]||0)+1; });
+  return Object.keys(c).map(function(k){ return (c[k]>1?c[k]+' × ':'')+PART_NAMES[k]; }).join(', ');
+}
+function movePart(i,cx,cy){
+  var pt=project.parts[i]; if(!pt) return;
+  var b=bbox(project.poly), mx=(pt.x1+pt.x2)/2, my=(pt.y1+pt.y2)/2;
+  var dx=Math.round(cx*20)/20-mx, dy=Math.round(cy*20)/20-my;
+  var lx=Math.min(pt.x1,pt.x2), hx=Math.max(pt.x1,pt.x2), ly=Math.min(pt.y1,pt.y2), hy=Math.max(pt.y1,pt.y2);
+  dx=clamp(dx,b.x0-lx,b.x1-hx); dy=clamp(dy,b.y0-ly,b.y1-hy);
+  pt.x1+=dx; pt.x2+=dx; pt.y1+=dy; pt.y2+=dy;
+}
+function moveEnd(i,end,p){
+  var pt=project.parts[i]; if(!pt) return;
+  var b=bbox(project.poly), x=clamp(Math.round(p.x*10)/10,b.x0,b.x1), y=clamp(Math.round(p.y*10)/10,b.y0,b.y1);
+  var ox=end===1?pt.x1:pt.x2, oy=end===1?pt.y1:pt.y2;
+  if(ui.ortho){ if(Math.abs(x-ox)>=Math.abs(y-oy)) y=oy; else x=ox; }
+  if(end===1){ pt.x2=x; pt.y2=y; } else { pt.x1=x; pt.y1=y; }
+}
+function dragTo(d,p){
+  if(d.kind==='part') movePart(d.i,p.x+ui.poff.x,p.y+ui.poff.y);
+  else if(d.kind==='pend') moveEnd(d.i,d.end,p);
+  else applyMove(d.kind,d.i,nearestEdge(p));
+}
+function spanAt(axis,pos){
+  var b=bbox(project.poly), st=0.05, best=null, cur=null;
+  var a0=axis==='v'?b.y0:b.x0, a1=axis==='v'?b.y1:b.x1;
+  for(var a=a0;a<=a1+1e-9;a+=st){
+    var inside=axis==='v'?inPoly(pos,a,project.poly):inPoly(a,pos,project.poly);
+    if(inside){ if(!cur) cur=[a,a]; else cur[1]=a; }
+    else if(cur){ if(!best||cur[1]-cur[0]>best[1]-best[0]) best=cur; cur=null; }
+  }
+  if(cur&&(!best||cur[1]-cur[0]>best[1]-best[0])) best=cur;
+  if(!best) return null;
+  return [Math.max(a0,best[0]-0.05),Math.min(a1,best[1]+0.05)];
+}
+function placeTemplate(kind){
+  var b=bbox(project.poly), sp;
+  if(kind==='v'){
+    var cx=Math.round((b.x0+b.w/2)*10)/10; sp=spanAt('v',cx);
+    if(sp) project.parts.push(newPart('passage',cx,sp[0],cx,sp[1]));
+  }else{
+    var cy=Math.round((b.y0+b.h/2)*10)/10; sp=spanAt('h',cy);
+    if(sp) project.parts.push(newPart('passage',sp[0],cy,sp[1],cy));
+  }
+  if(sp){ ui.psel=project.parts.length-1; ui.pplace=null; }
+}
+function zoneTileDefault(){
+  for(var i=0;i<CATALOG.length;i++) if(CATALOG[i].kind==='mur') return CATALOG[i].id;
+  return project.tile;
+}
+function zoneDefault(e){
+  return {e:e,s0:0,s1:1,h0:0,h1:1.2,tile:zoneTileDefault(),cm:30,grout:project.grout};
+}
+function clampZones(){
+  var E=edges();
+  project.zones=project.zones.filter(function(z){ return E[z.e]; });
+  project.zones.forEach(function(z){
+    var len=E[z.e].len, H=project.h;
+    z.s0=clamp(z.s0,0,Math.max(0,len-0.2));
+    z.s1=clamp(z.s1,Math.min(len,z.s0+0.2),len);
+    if(z.s1-z.s0<0.2) z.s0=Math.max(0,z.s1-0.2);
+    z.h0=clamp(z.h0,0,H-0.2);
+    z.h1=clamp(z.h1,z.h0+0.2,H);
+  });
+  if(ui.zsel>=project.zones.length) ui.zsel=-1;
 }
 function climText(){ return project.clim.enabled?(fmt(project.clim.kw)+' kW'):'non'; }
 function sanText(){
@@ -774,12 +900,76 @@ function swatchStyle(t){
   if(t.thumb) return 'background-image:url('+t.thumb+')';
   return 'background:linear-gradient(135deg,'+t.c[0]+' 50%,'+t.c[1]+' 50%)';
 }
-function fillSwatches(){
-  var html=CATALOG.map(function(t){
-    return '<button class="swatch" data-tile="'+t.id+'" title="'+t.name.replace(/"/g,'')+'" aria-label="'+t.name.replace(/"/g,'')+'" aria-pressed="false" type="button" style="'+swatchStyle(t)+'"></button>';
-  }).join('');
-  qa('.js-swatches').forEach(function(n){ n.innerHTML=html; });
+function swatchBtn(t,attr){
+  var nm=t.name.replace(/"/g,'');
+  return '<button class="swatch" '+attr+'="'+t.id+'" title="'+nm+'" aria-label="'+nm+'" aria-pressed="false" type="button" style="'+swatchStyle(t)+'"></button>';
 }
+function fillSwatches(){
+  var fl=CATALOG.filter(function(t){ return t.kind!=='mur'; }).map(function(t){ return swatchBtn(t,'data-tile'); }).join('');
+  var all=CATALOG.map(function(t){ return swatchBtn(t,'data-ztile'); }).join('');
+  qa('.js-swatches').forEach(function(n){ n.innerHTML=fl; });
+  qa('.js-wswatches').forEach(function(n){ n.innerHTML=all; });
+}
+function groutButtons(attr,cls){
+  return GROUTS.map(function(g){
+    return '<button class="swatch" '+attr+'="'+g[1]+'" title="Joints '+g[0]+'" aria-label="Joints '+g[0]+'" aria-pressed="false" type="button" style="background:'+g[1]+'"></button>';
+  }).join('')+'<label class="swatch colorpick" title="Autre couleur de joints"><input type="color" class="'+cls+'" value="#9ea3a0" aria-label="Autre couleur de joints"></label>';
+}
+var PP_HTML=
+'<div class="pp">'+
+  '<p class="note">Choisissez un modèle, puis tracez la cloison en glissant sur le plan 2D ou sur le sol de la 3D. Vous pouvez aussi utiliser un placement rapide.</p>'+
+  '<div class="field"><div class="lab">Modèles</div><div class="seg" role="group" aria-label="Modèles de cloison">'+
+    '<button class="btn small" data-ptype="pleine" aria-pressed="false" type="button">Cloison pleine</button>'+
+    '<button class="btn small" data-ptype="demi" aria-pressed="false" type="button">Demi-cloison</button>'+
+    '<button class="btn small" data-ptype="verre" aria-pressed="false" type="button">Cloison vitrée</button>'+
+    '<button class="btn small" data-ptype="passage" aria-pressed="false" type="button">Cloison avec passage</button></div></div>'+
+  '<p class="note warn pp-armed" hidden></p>'+
+  '<div class="field"><div class="lab">Placements rapides</div><div class="seg">'+
+    '<button class="btn small" data-ptpl="v" type="button">Séparer en deux (vertical)</button>'+
+    '<button class="btn small" data-ptpl="h" type="button">Séparer en deux (horizontal)</button></div></div>'+
+  '<div class="pp-body zp-body" hidden>'+
+    '<div class="field"><div class="lab"><span>Type</span><b class="pp-len"></b></div><div class="seg">'+
+      '<button class="btn small" data-pset="pleine" aria-pressed="false" type="button">Pleine</button>'+
+      '<button class="btn small" data-pset="demi" aria-pressed="false" type="button">Demi</button>'+
+      '<button class="btn small" data-pset="verre" aria-pressed="false" type="button">Vitrée</button>'+
+      '<button class="btn small" data-pset="passage" aria-pressed="false" type="button">Avec passage</button></div></div>'+
+    '<div class="field"><div class="lab"><span>Hauteur</span><b class="pp-hv"></b></div><input type="range" class="pp-h" min="0.3" max="2.5" step="0.05"></div>'+
+    '<div class="field pp-thf"><div class="lab">Épaisseur</div><div class="seg">'+
+      '<button class="btn small" data-pth="0.05" aria-pressed="false" type="button">5 cm</button>'+
+      '<button class="btn small" data-pth="0.1" aria-pressed="false" type="button">10 cm</button>'+
+      '<button class="btn small" data-pth="0.15" aria-pressed="false" type="button">15 cm</button></div></div>'+
+    '<div class="field pp-opf"><div class="lab"><span>Position du passage</span><b class="pp-opv"></b></div><input type="range" class="pp-op" min="10" max="90" step="1"></div>'+
+    '<div class="field pp-owf"><div class="lab"><span>Largeur du passage</span><b class="pp-owv"></b></div><input type="range" class="pp-ow" min="0.6" max="1.5" step="0.05"></div>'+
+  '</div>'+
+  '<div class="seg"><button class="btn small pp-del" type="button">Supprimer la sélection</button><button class="btn small pp-clear" type="button">Tout retirer</button></div>'+
+  '<p class="note pp-list"></p>'+
+'</div>';
+var ZP_HTML=
+'<div class="zp">'+
+  '<div class="seg"><button class="btn small" data-zadd="1" type="button">Ajouter une zone</button><button class="btn small" data-zdel="1" type="button">Supprimer la zone</button></div>'+
+  '<div class="seg zp-list"></div>'+
+  '<p class="note zp-info"></p>'+
+  '<div class="zp-body">'+
+    '<div class="field"><div class="lab"><span>Mur</span><b class="zp-wall"></b></div><div class="seg"><button class="btn small" data-zstep="-1" type="button">Mur précédent</button><button class="btn small" data-zstep="1" type="button">Mur suivant</button></div></div>'+
+    '<div class="field"><div class="lab">Zones rapides</div><div class="seg">'+
+      '<button class="btn small" data-zpreset="0,1.2" type="button">Soubassement</button>'+
+      '<button class="btn small" data-zpreset="0,2.1" type="button">Douche</button>'+
+      '<button class="btn small" data-zpreset="0.9,1.5" type="button">Crédence</button>'+
+      '<button class="btn small" data-zpreset="0,H" type="button">Pleine hauteur</button></div></div>'+
+    '<div class="field"><div class="lab"><span>Début sur le mur</span><b data-zv="s0"></b></div><input type="range" data-zf="s0" step="0.05"></div>'+
+    '<div class="field"><div class="lab"><span>Fin sur le mur</span><b data-zv="s1"></b></div><input type="range" data-zf="s1" step="0.05"></div>'+
+    '<div class="field"><div class="lab"><span>Hauteur du bas</span><b data-zv="h0"></b></div><input type="range" data-zf="h0" step="0.05"></div>'+
+    '<div class="field"><div class="lab"><span>Hauteur du haut</span><b data-zv="h1"></b></div><input type="range" data-zf="h1" step="0.05"></div>'+
+    '<div class="field"><div class="lab">Modèle de la zone</div><div class="seg js-wswatches"></div><div class="tilename">Choisi : <b class="js-ztilename"></b></div></div>'+
+    '<label class="btn small upload">Ajouter une photo de carreau mural<input type="file" accept="image/*" class="js-file" data-kind="mur" hidden></label>'+
+    '<div class="field"><div class="lab">Format</div><div class="seg">'+
+      '<button class="btn small" data-zcm="10" aria-pressed="false" type="button">10 × 10 cm</button>'+
+      '<button class="btn small" data-zcm="20" aria-pressed="false" type="button">20 × 20 cm</button>'+
+      '<button class="btn small" data-zcm="30" aria-pressed="false" type="button">30 × 30 cm</button>'+
+      '<button class="btn small" data-zcm="60" aria-pressed="false" type="button">60 × 60 cm</button></div></div>'+
+    '<div class="field"><div class="lab">Joints de la zone</div><div class="seg js-zgrout"></div></div>'+
+  '</div>'+
+'</div>';
 (function fillControls(){
   qa('.js-format').forEach(function(n){
     n.innerHTML='<button class="btn small" data-cm="30" aria-pressed="false" type="button">30 × 30 cm</button><button class="btn small" data-cm="60" aria-pressed="false" type="button">60 × 60 cm</button>';
@@ -791,13 +981,17 @@ function fillSwatches(){
     return '<button class="swatch" data-wallc="'+k+'" title="Murs '+WALLS[k][0]+'" aria-label="Murs '+WALLS[k][0]+'" aria-pressed="false" type="button" style="background:'+WALLS[k][1]+'"></button>';
   }).join('');
   qa('.js-wallc').forEach(function(n){ n.innerHTML=wc; });
+  qa('.js-zonepanel').forEach(function(n){ n.innerHTML=ZP_HTML; });
+  qa('.js-partpanel').forEach(function(n){ n.innerHTML=PP_HTML; });
+  qa('.js-grout').forEach(function(n){ n.innerHTML=groutButtons('data-grout','js-grout-color'); });
+  qa('.js-zgrout').forEach(function(n){ n.innerHTML=groutButtons('data-zgrout','js-zgrout-color'); });
   fillSwatches();
 })();
 
 /* Photos de carreaux ajoutées par le client (gardées dans son navigateur) */
 function saveCustom(){
   try{
-    var list=CATALOG.filter(function(t){return t.custom&&t.thumb;}).map(function(t){return {id:t.id,name:t.name,img:t.thumb};});
+    var list=CATALOG.filter(function(t){return t.custom&&t.thumb;}).map(function(t){return {id:t.id,name:t.name,img:t.thumb,kind:t.kind||'sol'};});
     localStorage.setItem('carrelage.tiles',JSON.stringify(list));
   }catch(err){}
 }
@@ -805,7 +999,7 @@ function saveCustom(){
   var list=[];
   try{ list=JSON.parse(localStorage.getItem('carrelage.tiles')||'[]'); }catch(err){}
   list.forEach(function(o){
-    var t={id:o.id,name:o.name,c:['#888888','#999999'],img:o.img,custom:true};
+    var t={id:o.id,name:o.name,c:['#888888','#999999'],img:o.img,custom:true,kind:o.kind||'sol'};
     CATALOG.push(t); prepareTile(t,function(){ fillSwatches(); syncControls(); });
   });
   if(list.length){ fillSwatches(); }
@@ -814,13 +1008,16 @@ function saveCustom(){
 qa('.js-file').forEach(function(inp){
   inp.addEventListener('change',function(){
     var f=inp.files&&inp.files[0]; if(!f) return;
-    var url=URL.createObjectURL(f);
-    var t={id:'u'+Date.now(),name:(f.name||'Mon carreau').replace(/\.[^.]+$/,'').slice(0,24),c:['#888888','#999999'],img:url,custom:true};
+    var url=URL.createObjectURL(f), kind=inp.getAttribute('data-kind')||'sol';
+    var t={id:'u'+Date.now(),name:(f.name||'Mon carreau').replace(/\.[^.]+$/,'').slice(0,24),c:['#888888','#999999'],img:url,custom:true,kind:kind};
     prepareTile(t,function(){
       URL.revokeObjectURL(url);
       if(!t.thumb) return;
       t.img=t.thumb;
-      CATALOG.push(t); project.tile=t.id; saveCustom(); fillSwatches(); renderAll();
+      CATALOG.push(t);
+      if(kind==='mur'){ var zq=project.zones[ui.zsel]; if(zq) zq.tile=t.id; }
+      else project.tile=t.id;
+      saveCustom(); fillSwatches(); renderAll();
     });
     inp.value='';
   });
@@ -834,6 +1031,8 @@ function pressed(sel,attr,val){
 }
 var HINTS={
   tile:'Choisissez le modèle, le format et la pose du carrelage. Cliquez sur la fenêtre, la porte, la clim ou un sanitaire pour le déplacer.',
+  part:'Choisissez un modèle, puis faites glisser dans la pièce pour tracer la cloison. Cliquez sur une cloison pour la déplacer ou régler ses extrémités.',
+  wall:'Faites glisser le long d\'un mur pour tracer une zone de carrelage. Cliquez sur une zone pour la modifier ou la déplacer.',
   clim:'Ajoutez la climatisation, puis cliquez près d\'un mur ou faites glisser l\'appareil.',
   door:'Cliquez sur un mur pour placer la porte.',
   win:'Cliquez sur un mur pour placer la fenêtre.',
@@ -841,6 +1040,69 @@ var HINTS={
   draw:'Cliquez pour poser les coins de votre pièce. Cliquez sur le premier point pour fermer.',
   san:'Choisissez un élément à droite, puis cliquez près d\'un mur. Cliquez sur un élément pour le déplacer.'
 };
+function syncParts(){
+  var pt=project.parts[ui.psel];
+  pressed('[data-ptype]','data-ptype',ui.pplace);
+  pressed('[data-pset]','data-pset',pt?pt.type:null);
+  pressed('[data-pth]','data-pth',pt?pt.th:null);
+  var txt=project.parts.length?('Dans la pièce : '+partText()+'.'):'Aucune cloison pour le moment.';
+  var armed=ui.pplace?('Faites glisser pour tracer : '+PART_NAMES[ui.pplace]+'.'):'';
+  qa('.pp').forEach(function(pp){
+    pp.querySelector('.pp-list').textContent=txt;
+    var ar=pp.querySelector('.pp-armed'); ar.textContent=armed; ar.hidden=!armed;
+    pp.querySelector('.pp-del').disabled=!pt;
+    var body=pp.querySelector('.pp-body'); body.hidden=!pt;
+    if(!pt) return;
+    var hin=pp.querySelector('.pp-h'); hin.max=project.h; hin.value=pt.h;
+    pp.querySelector('.pp-hv').textContent=fmt(pt.h,2)+' m';
+    pp.querySelector('.pp-len').textContent='Longueur : '+fmt(partLen(pt),2)+' m';
+    pp.querySelector('.pp-thf').hidden=(pt.type==='verre');
+    pp.querySelector('.pp-opf').hidden=(pt.type!=='passage');
+    pp.querySelector('.pp-owf').hidden=(pt.type!=='passage');
+    pp.querySelector('.pp-op').value=Math.round(pt.oc*100);
+    pp.querySelector('.pp-opv').textContent=Math.round(pt.oc*100)+' %';
+    pp.querySelector('.pp-ow').value=pt.ow;
+    pp.querySelector('.pp-owv').textContent=fmt(pt.ow,2)+' m';
+  });
+}
+function syncGrout(){
+  var cur=String(project.grout).toLowerCase(), isPreset=false;
+  qa('[data-grout]').forEach(function(b){
+    var on=b.getAttribute('data-grout').toLowerCase()===cur; if(on) isPreset=true;
+    b.setAttribute('aria-pressed',String(on));
+  });
+  qa('.js-grout .colorpick').forEach(function(l){ l.setAttribute('aria-pressed',String(!isPreset)); });
+  qa('.js-grout-color').forEach(function(i){ if(document.activeElement!==i) i.value=cur; });
+}
+function syncZones(){
+  var E=edges(), z=project.zones[ui.zsel], n=project.zones.length;
+  qa('.zp').forEach(function(zp){
+    zp.querySelector('.zp-list').innerHTML=project.zones.map(function(q,i){
+      return '<button class="btn small" data-zsel="'+i+'" aria-pressed="'+(i===ui.zsel)+'" type="button">Zone '+(i+1)+'</button>';
+    }).join('');
+    zp.querySelector('[data-zdel]').disabled=!z;
+    zp.querySelector('.zp-info').textContent=n?(z?'':'Cliquez sur une zone du plan ou de la 3D, ou choisissez-la ci-dessus.'):'Aucune zone pour le moment. Ajoutez-en une, ou tracez-la le long d\'un mur dans le plan 2D.';
+    var body=zp.querySelector('.zp-body'); body.hidden=!z;
+    if(!z) return;
+    var e=E[z.e]; if(!e) return;
+    zp.querySelector('.zp-wall').textContent='Mur '+(z.e+1)+' sur '+E.length+' ('+fmt(e.len)+' m)';
+    [['s0',e.len],['s1',e.len],['h0',project.h],['h1',project.h]].forEach(function(f){
+      var inp=zp.querySelector('[data-zf="'+f[0]+'"]');
+      inp.min=0; inp.max=f[1]; if(document.activeElement!==inp||String(inp.value)!==String(z[f[0]])) inp.value=z[f[0]];
+      zp.querySelector('[data-zv="'+f[0]+'"]').textContent=fmt(z[f[0]],2)+' m';
+    });
+    zp.querySelectorAll('[data-ztile]').forEach(function(b){ b.setAttribute('aria-pressed',String(b.getAttribute('data-ztile')===z.tile)); });
+    zp.querySelectorAll('[data-zcm]').forEach(function(b){ b.setAttribute('aria-pressed',String(b.getAttribute('data-zcm')===String(z.cm))); });
+    var cur=String(z.grout).toLowerCase(), isPreset=false;
+    zp.querySelectorAll('[data-zgrout]').forEach(function(b){
+      var on=b.getAttribute('data-zgrout').toLowerCase()===cur; if(on) isPreset=true;
+      b.setAttribute('aria-pressed',String(on));
+    });
+    zp.querySelectorAll('.js-zgrout .colorpick').forEach(function(l){ l.setAttribute('aria-pressed',String(!isPreset)); });
+    zp.querySelectorAll('.js-zgrout-color').forEach(function(i){ if(document.activeElement!==i) i.value=cur; });
+    zp.querySelector('.js-ztilename').textContent=T(z.tile).name;
+  });
+}
 function syncControls(){
   pressed('[data-tile]','data-tile',project.tile);
   pressed('[data-cm]','data-cm',project.tileCm);
@@ -874,6 +1136,8 @@ function syncControls(){
   });
   $('clim-body').hidden=!project.clim.enabled;
   $('p-tile').hidden=(ui.tool!=='tile');
+  $('p-zone').hidden=(ui.tool!=='wall');
+  $('p-part').hidden=(ui.tool!=='part');
   $('p-draw').hidden=(ui.tool!=='draw');
   $('p-san').hidden=(ui.tool!=='san');
   $('p-clim').hidden=(ui.tool!=='clim');
@@ -883,11 +1147,12 @@ function syncControls(){
   $('ortho').setAttribute('aria-pressed',String(ui.ortho));
   var np=ui.draft?ui.draft.pts.length:0;
   $('d-close').disabled=np<3; $('d-undo').disabled=np<1;
+  syncGrout(); syncZones(); syncParts();
   $('hint').textContent=ui.hintMsg||((ui.tool==='san'&&ui.place)?('Cliquez près d\'un mur pour poser : '+SAN[ui.place].name+'.'):HINTS[ui.tool]);
 }
 
 document.addEventListener('click',function(e){
-  var b=e.target.closest&&e.target.closest('[data-tile],[data-cm],[data-pose],[data-wallc],[data-kw],[data-shape],[data-tool],[data-cstep],[data-san],[data-climopt]');
+  var b=e.target.closest&&e.target.closest('[data-tile],[data-cm],[data-pose],[data-wallc],[data-kw],[data-shape],[data-tool],[data-cstep],[data-san],[data-climopt],[data-grout],[data-zadd],[data-zdel],[data-zstep],[data-zpreset],[data-ztile],[data-zcm],[data-zgrout],[data-zsel],[data-ptype],[data-pset],[data-pth],[data-ptpl]');
   if(!b) return;
   ui.hintMsg='';
   if(b.hasAttribute('data-tile')) project.tile=b.getAttribute('data-tile');
@@ -899,6 +1164,7 @@ document.addEventListener('click',function(e){
   if(b.hasAttribute('data-tool')){
     ui.tool=b.getAttribute('data-tool');
     ui.draft=(ui.tool==='draw')?{pts:[]}:null; ui.cursor=null;
+    if(ui.tool!=='part') ui.pplace=null;
   }
   if(b.hasAttribute('data-cstep')){
     var n=project.poly.length;
@@ -909,9 +1175,64 @@ document.addEventListener('click',function(e){
     if(!project.clim.enabled) project.clim.on=false;
     else clampAll();
   }
+  if(b.hasAttribute('data-ptype')){ ui.pplace=b.getAttribute('data-ptype'); ui.tool='part'; ui.draft=null; ui.psel=-1; }
+  var pc=project.parts[ui.psel];
+  if(pc){
+    if(b.hasAttribute('data-pset')){ var tp=b.getAttribute('data-pset'), d0=partDefaults(tp); pc.type=tp; pc.th=d0.th; pc.h=d0.h; }
+    if(b.hasAttribute('data-pth')) pc.th=parseFloat(b.getAttribute('data-pth'));
+  }
+  if(b.hasAttribute('data-ptpl')) placeTemplate(b.getAttribute('data-ptpl'));
+  var zc=project.zones[ui.zsel];
+  if(b.hasAttribute('data-grout')) project.grout=b.getAttribute('data-grout');
+  if(b.hasAttribute('data-zadd')){
+    var ze=Math.min(ui.zedge,project.poly.length-1), zn=zoneDefault(ze), zl=edges()[ze].len, zw=Math.min(1.5,zl-0.1);
+    zn.s0=(zl-zw)/2; zn.s1=(zl+zw)/2; project.zones.push(zn); ui.zsel=project.zones.length-1; clampZones();
+  }
+  if(zc){
+    if(b.hasAttribute('data-zdel')){ project.zones.splice(ui.zsel,1); ui.zsel=-1; }
+    if(b.hasAttribute('data-zstep')){
+      var nn=project.poly.length, ln=zc.s1-zc.s0;
+      zc.e=(zc.e+parseInt(b.getAttribute('data-zstep'),10)+nn)%nn; ui.zedge=zc.e;
+      var el2=edges()[zc.e].len, w2=Math.min(ln,el2-0.1); zc.s0=(el2-w2)/2; zc.s1=(el2+w2)/2; clampZones();
+    }
+    if(b.hasAttribute('data-zpreset')){
+      var pr=b.getAttribute('data-zpreset').split(',');
+      zc.h0=parseFloat(pr[0]); zc.h1=(pr[1]==='H')?project.h:parseFloat(pr[1]); clampZones();
+    }
+    if(b.hasAttribute('data-ztile')) zc.tile=b.getAttribute('data-ztile');
+    if(b.hasAttribute('data-zcm')) zc.cm=parseInt(b.getAttribute('data-zcm'),10);
+    if(b.hasAttribute('data-zgrout')) zc.grout=b.getAttribute('data-zgrout');
+  }
+  if(b.hasAttribute('data-zsel')){ ui.zsel=parseInt(b.getAttribute('data-zsel'),10); if(project.zones[ui.zsel]) ui.zedge=project.zones[ui.zsel].e; }
   if(b.hasAttribute('data-san')){ ui.place=b.getAttribute('data-san'); ui.tool='san'; ui.draft=null; ui.sel=-1; }
   renderAll();
   if(cur==='home'&&b.hasAttribute('data-tile')&&hLaid===0) hLay(Math.floor(hN/2)*hN+Math.floor(hN/2));
+});
+document.addEventListener('input',function(e){
+  var t=e.target; if(!t||!t.hasAttribute) return;
+  if(t.hasAttribute('data-zf')){
+    var z=project.zones[ui.zsel]; if(!z) return;
+    z[t.getAttribute('data-zf')]=parseFloat(t.value); clampZones(); renderAll();
+  }else if(t.classList.contains('js-grout-color')){
+    project.grout=t.value; renderAll();
+  }else if(t.classList.contains('js-zgrout-color')){
+    var z2=project.zones[ui.zsel]; if(z2){ z2.grout=t.value; renderAll(); }
+  }
+});
+document.addEventListener('input',function(e){
+  var t=e.target; if(!t||!t.classList) return;
+  var pt=project.parts[ui.psel]; if(!pt) return;
+  if(t.classList.contains('pp-h')) pt.h=parseFloat(t.value);
+  else if(t.classList.contains('pp-op')) pt.oc=parseInt(t.value,10)/100;
+  else if(t.classList.contains('pp-ow')) pt.ow=parseFloat(t.value);
+  else return;
+  clampParts(); renderAll();
+});
+document.addEventListener('click',function(e){
+  var t=e.target.closest&&e.target.closest('.pp-del,.pp-clear'); if(!t) return;
+  if(t.classList.contains('pp-del')){ if(ui.psel>=0){ project.parts.splice(ui.psel,1); ui.psel=-1; } }
+  else { project.parts=[]; ui.psel=-1; }
+  renderAll();
 });
 qa('.js-clim').forEach(function(b){
   b.addEventListener('click',function(){
@@ -1113,7 +1434,7 @@ function planMarkup(exp){
     if(tile.thumb) s+='<image href="'+tile.thumb+'" x="'+q[0]+'" y="'+q[1]+'" width="'+t+'" height="'+t+'" preserveAspectRatio="none"/>';
     else s+='<rect x="'+q[0]+'" y="'+q[1]+'" width="'+t+'" height="'+t+'" fill="'+pal[(i===0||i===3)?0:1]+'"/>';
   });
-  s+='<path d="M0 0H'+(2*t)+'M0 '+t+'H'+(2*t)+'M0 '+(2*t)+'H'+(2*t)+'M0 0V'+(2*t)+'M'+t+' 0V'+(2*t)+'M'+(2*t)+' 0V'+(2*t)+'" stroke="#E4E7E3" stroke-width="'+gw+'" fill="none"/>';
+  s+='<path d="M0 0H'+(2*t)+'M0 '+t+'H'+(2*t)+'M0 '+(2*t)+'H'+(2*t)+'M0 0V'+(2*t)+'M'+t+' 0V'+(2*t)+'M'+(2*t)+' 0V'+(2*t)+'" stroke="'+project.grout+'" stroke-width="'+gw+'" fill="none"/>';
   s+='</pattern></defs>';
 
   s+='<polygon points="'+polyStr(Pl)+'" fill="url(#pt)"/>';
@@ -1135,6 +1456,19 @@ function planMarkup(exp){
 
   /* murs */
   s+='<polygon points="'+polyStr(Pl)+'" fill="none" stroke="var(--ink)" stroke-width="'+wallW+'" stroke-linejoin="miter"/>';
+
+  s+=partsMarkup(exp,k,fs);
+
+  /* murs carrelés */
+  project.zones.forEach(function(z,i){
+    var e=E[z.e]; if(!e) return;
+    var th=0.16*k, a0=[e.a[0]+e.ux*z.s0,e.a[1]+e.uy*z.s0], a1=[e.a[0]+e.ux*z.s1,e.a[1]+e.uy*z.s1];
+    var q4=[a0,a1,[a1[0]+e.nx*th,a1[1]+e.ny*th],[a0[0]+e.nx*th,a0[1]+e.ny*th]];
+    s+='<polygon points="'+polyStr(q4)+'" fill="'+T(z.tile).c[0]+'" stroke="var(--ink)" stroke-width="'+(0.025*k)+'"/>';
+    if(!exp&&i===ui.zsel) s+='<polygon points="'+polyStr(q4)+'" fill="none" stroke="var(--sun)" stroke-width="'+(0.07*k)+'" stroke-dasharray="0.14 0.08"/>';
+    var mx=(a0[0]+a1[0])/2+e.nx*(th+0.22*k), my=(a0[1]+a1[1])/2+e.ny*(th+0.22*k);
+    s+='<text x="'+mx+'" y="'+(my+fs*0.3)+'" text-anchor="middle" font-size="'+(fs*0.8)+'" fill="var(--muted)">Z'+(i+1)+'</text>';
+  });
 
   /* porte */
   var de=E[project.door.e], dw=project.door.w, ds=project.door.s;
@@ -1187,6 +1521,42 @@ function itemsMarkup(exp,k){
   });
   return s;
 }
+function partsMarkup(exp,k,fs){
+  var s='';
+  project.parts.forEach(function(pt,i){
+    var len=partLen(pt); if(len<0.05) return;
+    var ux=(pt.x2-pt.x1)/len, uy=(pt.y2-pt.y1)/len, nx=-uy, ny=ux, th=Math.max(pt.th,0.07*k), ht=th/2;
+    function quad(a,b){
+      var A=[pt.x1+ux*a,pt.y1+uy*a], B=[pt.x1+ux*b,pt.y1+uy*b];
+      return [[A[0]+nx*ht,A[1]+ny*ht],[B[0]+nx*ht,B[1]+ny*ht],[B[0]-nx*ht,B[1]-ny*ht],[A[0]-nx*ht,A[1]-ny*ht]];
+    }
+    var segs=[[0,len]], fill='var(--ink)', op=1, stroke='none';
+    var ow=Math.min(pt.ow,Math.max(0.2,len-0.2)), c=pt.oc*len;
+    if(pt.type==='passage') segs=[[0,Math.max(0,c-ow/2)],[Math.min(len,c+ow/2),len]];
+    if(pt.type==='demi') op=0.5;
+    if(pt.type==='verre'){ fill='var(--glass)'; stroke='var(--ink)'; }
+    segs.forEach(function(g){
+      if(g[1]-g[0]<0.02) return;
+      s+='<polygon points="'+polyStr(quad(g[0],g[1]))+'" fill="'+fill+'" fill-opacity="'+op+'" stroke="'+stroke+'" stroke-width="'+(0.03*k)+'"/>';
+    });
+    if(pt.type==='passage'){
+      s+='<line x1="'+(pt.x1+ux*(c-ow/2))+'" y1="'+(pt.y1+uy*(c-ow/2))+'" x2="'+(pt.x1+ux*(c+ow/2))+'" y2="'+(pt.y1+uy*(c+ow/2))+'" stroke="var(--muted)" stroke-width="'+(0.025*k)+'" stroke-dasharray="0.08 0.08"/>';
+    }
+    if(pt.type==='demi'){
+      s+='<line x1="'+pt.x1+'" y1="'+pt.y1+'" x2="'+pt.x2+'" y2="'+pt.y2+'" stroke="var(--surface)" stroke-width="'+(0.02*k)+'" stroke-dasharray="0.1 0.1"/>';
+    }
+    if(!exp&&i===ui.psel){
+      s+='<polygon points="'+polyStr(quad(0,len))+'" fill="none" stroke="var(--sun)" stroke-width="'+(0.06*k)+'" stroke-dasharray="0.14 0.08"/>';
+      s+='<circle cx="'+pt.x1+'" cy="'+pt.y1+'" r="'+(0.14*k)+'" fill="var(--sun)" stroke="var(--ink)" stroke-width="'+(0.035*k)+'"/>';
+      s+='<circle cx="'+pt.x2+'" cy="'+pt.y2+'" r="'+(0.14*k)+'" fill="var(--sun)" stroke="var(--ink)" stroke-width="'+(0.035*k)+'"/>';
+    }
+    if(len>0.8){
+      var mx=(pt.x1+pt.x2)/2+nx*(ht+0.2*k), my=(pt.y1+pt.y2)/2+ny*(ht+0.2*k);
+      s+='<text x="'+mx+'" y="'+(my+fs*0.3)+'" text-anchor="middle" font-size="'+(fs*0.8)+'" fill="var(--muted)">'+fmt(len,2)+' m</text>';
+    }
+  });
+  return s;
+}
 function planRender(){
   var r=planMarkup(false);
   plan.setAttribute('viewBox',r.vb.join(' '));
@@ -1222,6 +1592,10 @@ function applyMove(kind,i,n){
   else if(kind==='clim'){ project.clim.enabled=true; project.clim.e=n.i; project.clim.t=n.s/n.len; }
   else if(kind==='win'){ project.win.e=n.i; project.win.c=n.s; }
   else if(kind==='door'){ project.door.e=n.i; project.door.s=n.s-project.door.w/2; }
+  else if(kind==='zone'){
+    var z=project.zones[i];
+    if(z){ var Ee=edges()[n.i], L=Math.min(z.s1-z.s0,Ee.len), c=clamp(n.s-L/2,0,Ee.len-L); z.e=n.i; z.s0=c; z.s1=c+L; }
+  }
   clampAll();
 }
 function edgeHit(e,p,c,w){
@@ -1234,6 +1608,23 @@ function hitObject(p){
   if(project.clim.enabled){ var g=acGeom(); if(Math.hypot(p.x-g.ox,p.y-g.oy)<0.55) return {kind:'clim',i:0}; }
   var w=project.win, ew=E[w.e]; if(ew&&edgeHit(ew,p,w.c,w.w)) return {kind:'win',i:0};
   var d=project.door, ed=E[d.e]; if(ed&&edgeHit(ed,p,d.s+d.w/2,d.w)) return {kind:'door',i:0};
+  for(var zi=project.zones.length-1;zi>=0;zi--){
+    var zz=project.zones[zi], ez=E[zz.e];
+    if(ez&&edgeHit(ez,p,(zz.s0+zz.s1)/2,zz.s1-zz.s0)) return {kind:'zone',i:zi};
+  }
+  var kpx=planViewBox()[2]/9;
+  if(ui.psel>=0){
+    var sp=project.parts[ui.psel];
+    if(sp){
+      if(Math.hypot(p.x-sp.x1,p.y-sp.y1)<0.3*kpx) return {kind:'pend',i:ui.psel,end:0};
+      if(Math.hypot(p.x-sp.x2,p.y-sp.y2)<0.3*kpx) return {kind:'pend',i:ui.psel,end:1};
+    }
+  }
+  for(var pi=project.parts.length-1;pi>=0;pi--){
+    var pt=project.parts[pi], L=partLen(pt); if(L<0.05) continue;
+    var ux=(pt.x2-pt.x1)/L, uy=(pt.y2-pt.y1)/L, sa=(p.x-pt.x1)*ux+(p.y-pt.y1)*uy, da=Math.abs(-(p.x-pt.x1)*uy+(p.y-pt.y1)*ux);
+    if(sa>=-0.1&&sa<=L+0.1&&da<=Math.max(pt.th,0.07*kpx)/2+0.12*kpx) return {kind:'part',i:pi};
+  }
   return null;
 }
 function snap(v,st){ return Math.round(v/st)*st; }
@@ -1250,7 +1641,7 @@ function finishDraft(){
   if(d.length<3) return;
   var np=normalizePoly(d);
   if(Math.abs(polyArea(np))<1.5){ ui.hintMsg='La pièce est trop petite : placez les coins plus loin les uns des autres.'; renderAll(); return; }
-  project.poly=np; project.shape='custom'; project.items=[]; ui.sel=-1; autoPlace();
+  project.poly=np; project.shape='custom'; project.items=[]; ui.sel=-1; project.zones=[]; ui.zsel=-1; project.parts=[]; ui.psel=-1; autoPlace();
   ui.draft=null; ui.tool='tile'; ui.hintMsg=''; ui.cursor=null;
   renderAll();
 }
@@ -1280,9 +1671,29 @@ plan.addEventListener('pointerdown',function(e){
   var h=hitObject(p), placed=false;
   if(!h){
     if(ui.tool==='clim'||ui.tool==='door'||ui.tool==='win'){ h={kind:ui.tool,i:0}; placed=true; }
-    else { if(ui.sel!==-1){ ui.sel=-1; renderAll(); } return; }
+    else if(ui.tool==='wall'){
+      var nz=nearestEdge(p), z0=zoneDefault(nz.i);
+      z0.s0=nz.s; z0.s1=nz.s+0.2;
+      project.zones.push(z0); ui.zsel=project.zones.length-1; ui.zedge=nz.i;
+      ui.zcreate={i:ui.zsel,e:nz.i,anchor:nz.s}; dragging=true;
+      try{ plan.setPointerCapture(e.pointerId); }catch(err){}
+      clampZones(); renderAll(); return;
+    }
+    else if(ui.tool==='part'&&ui.pplace){
+      var b0=bbox(project.poly), px0=clamp(snap(p.x,0.1),b0.x0,b0.x1), py0=clamp(snap(p.y,0.1),b0.y0,b0.y1);
+      project.parts.push(newPart(ui.pplace,px0,py0,px0,py0)); ui.psel=project.parts.length-1;
+      ui.pcreate={i:ui.psel,ax:px0,ay:py0}; dragging=true;
+      try{ plan.setPointerCapture(e.pointerId); }catch(err){}
+      renderAll(); return;
+    }
+    else { if(ui.sel!==-1||ui.zsel!==-1||ui.psel!==-1){ ui.sel=-1; ui.zsel=-1; ui.psel=-1; renderAll(); } return; }
   }
-  ui.drag=h; ui.sel=(h.kind==='item')?h.i:-1; dragging=true;
+  ui.drag=h; ui.sel=(h.kind==='item')?h.i:-1; if(h.kind==='zone'){ ui.zsel=h.i; ui.zedge=project.zones[h.i].e; }
+  if(h.kind==='part'||h.kind==='pend'){
+    ui.psel=h.i; var pq=project.parts[h.i];
+    ui.poff={x:(pq.x1+pq.x2)/2-p.x,y:(pq.y1+pq.y2)/2-p.y};
+  }
+  dragging=true;
   try{ plan.setPointerCapture(e.pointerId); }catch(err){}
   if(placed) applyMove(h.kind,h.i,nearestEdge(p));
   renderAll();
@@ -1294,7 +1705,21 @@ plan.addEventListener('pointermove',function(e){
     if(ui.tool!=='corners') plan.style.cursor=hitObject(p)?'grab':'crosshair';
     return;
   }
-  if(ui.drag){ applyMove(ui.drag.kind,ui.drag.i,nearestEdge(p)); renderAll(); return; }
+  if(ui.zcreate){
+    var zc2=ui.zcreate, zz2=project.zones[zc2.i], nn2=nearestEdge(p);
+    if(zz2&&nn2.i===zc2.e){ zz2.s0=Math.min(zc2.anchor,nn2.s); zz2.s1=Math.max(zc2.anchor,nn2.s); clampZones(); renderAll(); }
+    return;
+  }
+  if(ui.pcreate){
+    var pcr=ui.pcreate, ptt=project.parts[pcr.i];
+    if(ptt){
+      var b1=bbox(project.poly), qx=clamp(snap(p.x,0.1),b1.x0,b1.x1), qy=clamp(snap(p.y,0.1),b1.y0,b1.y1);
+      if(ui.ortho){ if(Math.abs(qx-pcr.ax)>=Math.abs(qy-pcr.ay)) qy=pcr.ay; else qx=pcr.ax; }
+      ptt.x2=qx; ptt.y2=qy; renderAll();
+    }
+    return;
+  }
+  if(ui.drag){ dragTo(ui.drag,p); renderAll(); return; }
   if(ui.tool==='corners'&&ui.dragV>=0){
     var old=project.poly[ui.dragV].slice();
     project.poly[ui.dragV]=[Math.max(0,snap(p.x,0.1)),Math.max(0,snap(p.y,0.1))];
@@ -1304,6 +1729,23 @@ plan.addEventListener('pointermove',function(e){
 });
 function endDrag(){
   var was=ui.dragV>=0;
+  if(ui.pcreate){
+    var pq2=project.parts[ui.pcreate.i];
+    if(pq2&&partLen(pq2)<0.3){
+      var bb2=bbox(project.poly), L2=(pq2.type==='passage')?2.0:1.5;
+      var x2=ui.pcreate.ax+L2; if(x2>bb2.x1) x2=ui.pcreate.ax-L2;
+      pq2.x2=clamp(x2,bb2.x0,bb2.x1); pq2.y2=ui.pcreate.ay;
+    }
+    ui.pcreate=null; ui.pplace=null; was=true;
+  }
+  if(ui.zcreate){
+    var zq=project.zones[ui.zcreate.i];
+    if(zq&&zq.s1-zq.s0<0.4){
+      var Ee=edges()[zq.e], L0=Math.min(1.5,Ee.len-0.1), c0=clamp(ui.zcreate.anchor-L0/2,0,Ee.len-L0);
+      zq.s0=c0; zq.s1=c0+L0; clampZones();
+    }
+    ui.zcreate=null; was=true;
+  }
   ui.drag=null;
   dragging=false; ui.dragV=-1; ui.vbLock=null;
   if(was) renderAll();
@@ -1323,7 +1765,7 @@ $('san-clear').addEventListener('click',function(){ project.items=[]; ui.sel=-1;
    ===================================================================== */
 var V3={inited:false,ok:false,running:false,raf:0,last:0,
   scene:null,camera:null,renderer:null,group:null,air:null,
-  theta:-0.6,el:0.75,radius:8,auto:false,pointers:{},pinch:0,lastDims:'',drag:null,dirty:false,pick:[],cw:0,ch:0,floorKey:'',floorCanvas:null};
+  theta:-0.6,el:0.75,radius:8,auto:false,pointers:{},pinch:0,lastDims:'',drag:null,dirty:false,pick:[],cw:0,ch:0,floorKey:'',floorCanvas:null,tc:{}};
 var cv=$('cv'), box3d=$('box3d');
 
 function defRadius(){ var b=bbox(project.poly); return Math.max(b.w,b.h)*1.35+2.5; }
@@ -1343,8 +1785,8 @@ function init3d(){
   V3.renderer.setClearColor(0x000000,0);
   V3.scene=new THREE.Scene();
   V3.camera=new THREE.PerspectiveCamera(40,1,0.1,100);
-  V3.scene.add(new THREE.HemisphereLight(0xffffff,0x9aa7a3,0.95));
-  var dl=new THREE.DirectionalLight(0xffffff,0.55); dl.position.set(4,8,5); V3.scene.add(dl);
+  V3.scene.add(new THREE.HemisphereLight(0xffffff,0x9aa7a3,0.62));
+  var dl=new THREE.DirectionalLight(0xffffff,0.38); dl.position.set(4,8,5); V3.scene.add(dl);
 
   var ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
   function setRay(e){
@@ -1360,7 +1802,7 @@ function init3d(){
   }
   function planPoint(e,kind){
     setRay(e);
-    var y={win:1.5,door:1.0,clim:2.2,item:0.3}[kind]||0;
+    var y={win:1.5,door:1.0,clim:2.2,item:0.3,zone:1.2,part:1.0}[kind]||0;
     var pt=new THREE.Vector3(), ok=ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),-y),pt);
     return ok?{x:pt.x,y:pt.z}:null;
   }
@@ -1369,18 +1811,45 @@ function init3d(){
     V3.pointers[e.pointerId]={x:e.clientX,y:e.clientY};
     if(Object.keys(V3.pointers).length===1){
       var h=pickAt(e);
-      V3.drag=h?{kind:h.kind,i:h.i}:null;
+      var pc3=null;
+      if(!h&&ui.pplace){
+        var pp1=planPoint(e,'floor');
+        if(pp1){
+          var b0=bbox(project.poly), x0=clamp(Math.round(pp1.x*10)/10,b0.x0,b0.x1), y0=clamp(Math.round(pp1.y*10)/10,b0.y0,b0.y1);
+          project.parts.push(newPart(ui.pplace,x0,y0,x0,y0)); ui.psel=project.parts.length-1;
+          pc3={kind:'pcreate',i:ui.psel,ax:x0,ay:y0}; syncControls(); V3.dirty=true;
+        }
+      }
+      V3.drag=h?{kind:h.kind,i:h.i}:pc3;
       if(V3.drag&&V3.drag.kind==='item') ui.sel=V3.drag.i;
+      if(V3.drag&&V3.drag.kind==='part'){
+        ui.psel=V3.drag.i; var pq3=project.parts[V3.drag.i], pp0=planPoint(e,'part');
+        V3.drag.off=pp0?{x:(pq3.x1+pq3.x2)/2-pp0.x,y:(pq3.y1+pq3.y2)/2-pp0.y}:{x:0,y:0};
+        syncControls(); V3.dirty=true;
+      }
+      if(V3.drag&&V3.drag.kind==='zone'){ ui.zsel=V3.drag.i; ui.zedge=project.zones[V3.drag.i].e; syncControls(); V3.dirty=true; }
     }else{ V3.drag=null; }
     V3.pinch=pinchDist();
   });
   cv.addEventListener('pointermove',function(e){
     var p=V3.pointers[e.pointerId];
-    if(!p){ cv.style.cursor=pickAt(e)?'grab':''; return; }
+    if(!p){ cv.style.cursor=ui.pplace?'crosshair':(pickAt(e)?'grab':''); return; }
     var ids=Object.keys(V3.pointers);
     if(V3.drag&&ids.length===1){
       var pp=planPoint(e,V3.drag.kind);
-      if(pp){ applyMove(V3.drag.kind,V3.drag.i,nearestEdge(pp)); V3.dirty=true; }
+      if(pp){
+        if(V3.drag.kind==='pcreate'){
+          var ptt3=project.parts[V3.drag.i];
+          if(ptt3){
+            var b3=bbox(project.poly), qx3=clamp(Math.round(pp.x*10)/10,b3.x0,b3.x1), qy3=clamp(Math.round(pp.y*10)/10,b3.y0,b3.y1);
+            if(ui.ortho){ if(Math.abs(qx3-V3.drag.ax)>=Math.abs(qy3-V3.drag.ay)) qy3=V3.drag.ay; else qx3=V3.drag.ax; }
+            ptt3.x2=qx3; ptt3.y2=qy3;
+          }
+        }
+        else if(V3.drag.kind==='part'){ var of=V3.drag.off||{x:0,y:0}; movePart(V3.drag.i,pp.x+of.x,pp.y+of.y); }
+        else applyMove(V3.drag.kind,V3.drag.i,nearestEdge(pp));
+        V3.dirty=true;
+      }
       p.x=e.clientX; p.y=e.clientY; return;
     }
     if(ids.length===1){
@@ -1394,7 +1863,19 @@ function init3d(){
       V3.pinch=d;
     }
   });
-  function up3(e){ delete V3.pointers[e.pointerId]; V3.pinch=pinchDist(); if(!Object.keys(V3.pointers).length) V3.drag=null; }
+  function up3(e){
+    delete V3.pointers[e.pointerId]; V3.pinch=pinchDist();
+    if(V3.drag&&V3.drag.kind==='pcreate'){
+      var pq=project.parts[V3.drag.i];
+      if(pq&&partLen(pq)<0.3){
+        var bb=bbox(project.poly), L=(pq.type==='passage')?2.0:1.5, x2=V3.drag.ax+L;
+        if(x2>bb.x1) x2=V3.drag.ax-L;
+        pq.x2=clamp(x2,bb.x0,bb.x1); pq.y2=V3.drag.ay;
+      }
+      ui.pplace=null; V3.drag=null; syncControls(); V3.dirty=true; return;
+    }
+    if(!Object.keys(V3.pointers).length) V3.drag=null;
+  }
   cv.addEventListener('pointerup',up3);
   cv.addEventListener('pointercancel',up3);
   cv.addEventListener('wheel',function(e){
@@ -1429,30 +1910,46 @@ function disposeGroup(g){
     }
   });
 }
-function floorTexture(){
-  var tile=T(project.tile), key=project.tile+'|'+(tile.cvs?1:0);
-  var c=V3.floorCanvas;
-  if(!c||V3.floorKey!==key){
-    c=document.createElement('canvas'); c.width=c.height=512;
-    var x=c.getContext('2d'), pal=tile.c;
-    x.fillStyle='#DADDD9'; x.fillRect(0,0,512,512);
-    for(var i=0;i<2;i++) for(var j=0;j<2;j++){
-      if(tile.cvs){
-        x.drawImage(tile.cvs,i*256+2,j*256+2,252,252);
-      }else{
-        x.fillStyle=pal[(i+j)%2]; x.fillRect(i*256+2,j*256+2,252,252);
-      }
-      var g=x.createLinearGradient(i*256,j*256,i*256+256,j*256+256);
-      g.addColorStop(0,'rgba(255,255,255,.14)'); g.addColorStop(1,'rgba(0,0,0,.10)');
-      x.fillStyle=g; x.fillRect(i*256+2,j*256+2,252,252);
+function tileCanvas(tile,grout){
+  var key=tile.id+'|'+(tile.cvs?1:0)+'|'+grout;
+  if(V3.tc[key]) return V3.tc[key];
+  if(Object.keys(V3.tc).length>30) V3.tc={};
+  var c=document.createElement('canvas'); c.width=c.height=512;
+  var x=c.getContext('2d'), pal=tile.c;
+  x.fillStyle=grout; x.fillRect(0,0,512,512);
+  for(var i=0;i<2;i++) for(var j=0;j<2;j++){
+    if(tile.cvs){
+      x.drawImage(tile.cvs,i*256+2,j*256+2,252,252);
+    }else{
+      x.fillStyle=pal[(i+j)%2]; x.fillRect(i*256+2,j*256+2,252,252);
     }
-    V3.floorCanvas=c; V3.floorKey=key;
+    var g=x.createLinearGradient(i*256,j*256,i*256+256,j*256+256);
+    g.addColorStop(0,'rgba(255,255,255,.10)'); g.addColorStop(1,'rgba(0,0,0,.12)');
+    x.fillStyle=g; x.fillRect(i*256+2,j*256+2,252,252);
+    x.strokeStyle='rgba(0,0,0,.16)'; x.lineWidth=2; x.strokeRect(i*256+3,j*256+3,250,250);
   }
-  var t=new THREE.CanvasTexture(c);
+  V3.tc[key]=c; return c;
+}
+function makeTex(tile,grout,rot){
+  var t=new THREE.CanvasTexture(tileCanvas(tile,grout));
   t.wrapS=t.wrapT=THREE.RepeatWrapping;
   t.anisotropy=V3.renderer.capabilities.getMaxAnisotropy();
-  t.rotation=project.pose==='diag'?Math.PI/4:0;
+  t.rotation=rot||0;
   return t;
+}
+function floorTexture(){ return makeTex(T(project.tile),project.grout,project.pose==='diag'?Math.PI/4:0); }
+function zoneTexture(z){ return makeTex(T(z.tile),z.grout,0); }
+function subRect(list,hl){
+  var out=[];
+  list.forEach(function(r){
+    if(hl.x1<=r.x0||hl.x0>=r.x1||hl.y1<=r.y0||hl.y0>=r.y1){ out.push(r); return; }
+    if(hl.x0>r.x0) out.push({x0:r.x0,x1:hl.x0,y0:r.y0,y1:r.y1});
+    if(hl.x1<r.x1) out.push({x0:hl.x1,x1:r.x1,y0:r.y0,y1:r.y1});
+    var mx0=Math.max(r.x0,hl.x0), mx1=Math.min(r.x1,hl.x1);
+    if(hl.y0>r.y0) out.push({x0:mx0,x1:mx1,y0:r.y0,y1:hl.y0});
+    if(hl.y1<r.y1) out.push({x0:mx0,x1:mx1,y0:hl.y1,y1:r.y1});
+  });
+  return out;
 }
 function mat(color,extra){
   var o={color:color,roughness:0.9,metalness:0};
@@ -1519,7 +2016,7 @@ function build3d(){
   Pl.forEach(function(q,i){ if(i) sh0.lineTo(q[0],q[1]); else sh0.moveTo(q[0],q[1]); });
   var fg=new THREE.ShapeGeometry(sh0), ps=fg.attributes.position, uv=fg.attributes.uv;
   for(var i=0;i<uv.count;i++) uv.setXY(i,ps.getX(i)/(2*tileM),ps.getY(i)/(2*tileM));
-  var floor=new THREE.Mesh(fg,new THREE.MeshStandardMaterial({map:floorTexture(),roughness:0.35,metalness:0,side:THREE.DoubleSide}));
+  var floor=new THREE.Mesh(fg,new THREE.MeshStandardMaterial({map:floorTexture(),roughness:0.5,metalness:0,side:THREE.DoubleSide}));
   floor.rotation.x=Math.PI/2; floor.position.y=0.002; g.add(floor);
   var slab=new THREE.Mesh(new THREE.ExtrudeGeometry(sh0,{depth:0.14,bevelEnabled:false}),mat(0x4A4F4C));
   slab.rotation.x=Math.PI/2; g.add(slab);
@@ -1565,6 +2062,23 @@ function build3d(){
         var b=new THREE.Mesh(new THREE.BoxGeometry(0.05,1.0,0.06),fm); b.position.set(px,1.5,-0.02); wg.add(b); tag(b,'win',0);
       });
     }
+    project.zones.forEach(function(z,zi){
+      if(z.e!==idx) return;
+      var xs=loc(z.s1), xe=loc(z.s0), rects=[{x0:xs,x1:xe,y0:z.h0,y1:z.h1}], tm=Math.max(0.05,z.cm/100);
+      if(hasDoor) rects=subRect(rects,{x0:dx0,x1:dx1,y0:0,y1:2.05});
+      if(hasWin) rects=subRect(rects,{x0:wx0,x1:wx1,y0:1.0,y1:2.0});
+      rects.forEach(function(r){
+        var W=r.x1-r.x0, Hh=r.y1-r.y0; if(W<0.02||Hh<0.02) return;
+        var geo=new THREE.PlaneGeometry(W,Hh), uv2=geo.attributes.uv, p2=geo.attributes.position;
+        for(var q=0;q<uv2.count;q++) uv2.setXY(q,(p2.getX(q)+W/2+r.x0-xs)/(2*tm),(p2.getY(q)+Hh/2+r.y0-z.h0)/(2*tm));
+        var zm=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:zoneTexture(z),roughness:0.4,metalness:0,side:THREE.BackSide}));
+        zm.position.set(r.x0+W/2,r.y0+Hh/2,-0.026); wg.add(zm); tag(zm,'zone',zi);
+      });
+      if(ui.zsel===zi){
+        var fr=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(xe-xs,z.h1-z.h0)),new THREE.LineBasicMaterial({color:0xF2B632}));
+        fr.position.set((xs+xe)/2,(z.h0+z.h1)/2,-0.032); wg.add(fr);
+      }
+    });
     if(project.clim.enabled&&project.clim.e===idx){
       var sl=loc(project.clim.t*len);
       var body=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.28,0.22),mat(0xF6F7F5,{roughness:0.5}));
@@ -1578,6 +2092,38 @@ function build3d(){
       }
     }
     g.add(wg);
+  });
+
+  /* cloisons */
+  project.parts.forEach(function(pt,pi){
+    var dx=pt.x2-pt.x1, dy=pt.y2-pt.y1, len=Math.hypot(dx,dy); if(len<0.05) return;
+    var pg=new THREE.Group(), H=pt.h, th=pt.th;
+    pg.position.set((pt.x1+pt.x2)/2,0,(pt.y1+pt.y2)/2); pg.rotation.y=-Math.atan2(dy,dx);
+    var wm=new THREE.MeshStandardMaterial({color:wallHex,roughness:0.95,metalness:0});
+    function seg(a,b,y0,y1,m){
+      var bx=new THREE.Mesh(new THREE.BoxGeometry(b-a,y1-y0,th),m||wm);
+      bx.position.set((a+b)/2,(y0+y1)/2,0); pg.add(bx); tag(bx,'part',pi); return bx;
+    }
+    if(pt.type==='pleine') seg(-len/2,len/2,0,H);
+    else if(pt.type==='demi'){
+      seg(-len/2,len/2,0,H);
+      var cap=new THREE.Mesh(new THREE.BoxGeometry(len+0.02,0.03,th+0.03),mat(0xF3F5F3,{roughness:0.6}));
+      cap.position.set(0,H+0.015,0); pg.add(cap); tag(cap,'part',pi);
+    }else if(pt.type==='passage'){
+      var ow=Math.min(pt.ow,Math.max(0.2,len-0.2)), c=-len/2+pt.oc*len;
+      var o0=Math.max(-len/2,c-ow/2), o1=Math.min(len/2,c+ow/2);
+      if(o0>-len/2+0.02) seg(-len/2,o0,0,H);
+      if(o1<len/2-0.02) seg(o1,len/2,0,H);
+      if(H>2.05) seg(o0,o1,2.05,H);
+    }else if(pt.type==='verre'){
+      var gl=new THREE.Mesh(new THREE.BoxGeometry(len,H,0.02),new THREE.MeshBasicMaterial({color:0xBFE3F2,transparent:true,opacity:0.28,depthWrite:false}));
+      gl.position.set(0,H/2,0); pg.add(gl); tag(gl,'part',pi);
+      var ch=mat(0xC9CED0,{roughness:0.2,metalness:0.8});
+      [[len,0.03,0.04,0,0.015],[len,0.03,0.04,0,H-0.015],[0.03,H,0.04,-len/2+0.015,H/2],[0.03,H,0.04,len/2-0.015,H/2]].forEach(function(r){
+        var rb=new THREE.Mesh(new THREE.BoxGeometry(r[0],r[1],r[2]),ch); rb.position.set(r[3],r[4],0); pg.add(rb); tag(rb,'part',pi);
+      });
+    }
+    g.add(pg);
   });
 
   /* sanitaires */
@@ -1631,7 +2177,7 @@ function loop(ts){
   V3.raf=requestAnimationFrame(loop);
   var dt=Math.min(0.05,(ts-V3.last)/1000||0.016); V3.last=ts;
   if(V3.auto&&Object.keys(V3.pointers).length===0) V3.theta+=dt*0.25;
-  if(V3.dirty){ V3.dirty=false; build3d(); chips3d(); }
+  if(V3.dirty){ V3.dirty=false; build3d(); chips3d(); syncControls(); }
   updateAir(dt);
   placeCamera(V3.theta,V3.el,V3.radius);
   V3.renderer.render(V3.scene,V3.camera);
@@ -1655,8 +2201,11 @@ function chips3d(){
     chip('Pièce',roomText())+
     chip('Carreau',T(project.tile).name)+
     chip('Format',project.tileCm+' × '+project.tileCm+' cm')+
+    chip('Joints',groutName(project.grout))+
     chip('Clim',climText())+
-    (project.items.length?chip('Sanitaires',sanText()):'');
+    (project.items.length?chip('Sanitaires',sanText()):'')+
+    (project.zones.length?chip('Murs carrelés',project.zones.length+' zone'+(project.zones.length>1?'s':'')):'')+
+    (project.parts.length?chip('Cloisons',partText()):'');
 }
 
 /* =====================================================================
@@ -1707,7 +2256,7 @@ function dataUrlToFile(url,name){
   return new File([u8],name,{type:'image/jpeg'});
 }
 function enterSend(){
-  $('chips-send').innerHTML=chip('Pièce',roomText())+chip('Carreau',T(project.tile).name)+chip('Format',project.tileCm+' × '+project.tileCm+' cm')+chip('Clim',climText())+(project.items.length?chip('Sanitaires',sanText()):'');
+  $('chips-send').innerHTML=chip('Pièce',roomText())+chip('Carreau',T(project.tile).name)+chip('Format',project.tileCm+' × '+project.tileCm+' cm')+chip('Joints',groutName(project.grout))+chip('Clim',climText())+(project.items.length?chip('Sanitaires',sanText()):'')+(project.zones.length?chip('Murs carrelés',project.zones.length+' zone'+(project.zones.length>1?'s':'')):'')+(project.parts.length?chip('Cloisons',partText()):'');
   var token=++cap.token;
   cap.d2=null; cap.d3=null;
   ['img2d','img3d'].forEach(function(id){ $(id).removeAttribute('src'); });
@@ -1728,10 +2277,22 @@ function buildMessage(f){
   L.push('Bonjour, je m\'appelle '+f.prenom+'.');
   L.push('Voici mon projet de carrelage :');
   L.push('• Pièce : '+roomText());
-  L.push('• Carreau : '+T(project.tile).name+', '+project.tileCm+' × '+project.tileCm+' cm, '+(project.pose==='diag'?'pose en diagonale':'pose droite'));
+  L.push('• Carreau : '+T(project.tile).name+', '+project.tileCm+' × '+project.tileCm+' cm, '+(project.pose==='diag'?'pose en diagonale':'pose droite')+', joints '+groutName(project.grout));
   L.push('• Murs : '+WALLS[project.wallColor][0]);
   if(project.clim.enabled) L.push('• Clim : mur '+(project.clim.e+1)+' sur '+E.length+', '+fmt(project.clim.kw)+' kW');
   if(project.items.length) L.push('• Sanitaires : '+sanText());
+  if(project.parts.length){
+    L.push('• Cloisons : '+project.parts.length);
+    project.parts.forEach(function(pt,i){
+      L.push('   - Cloison '+(i+1)+' : '+PART_NAMES[pt.type].toLowerCase()+', '+fmt(partLen(pt),2)+' m de long, '+fmt(pt.h,2)+' m de haut');
+    });
+  }
+  if(project.zones.length){
+    L.push('• Murs carrelés : '+project.zones.length+' zone'+(project.zones.length>1?'s':''));
+    project.zones.forEach(function(z,i){
+      L.push('   - Zone '+(i+1)+' : mur '+(z.e+1)+', '+fmt(z.s1-z.s0,2)+' m de large, de '+fmt(z.h0,2)+' à '+fmt(z.h1,2)+' m de haut, '+T(z.tile).name+' '+z.cm+' × '+z.cm+' cm, joints '+groutName(z.grout));
+    });
+  }
   L.push('');
   L.push('Mes coordonnées :');
   L.push('• Téléphone : '+f.tel);
